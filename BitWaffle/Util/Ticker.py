@@ -1,72 +1,77 @@
-from threading import Thread, Event, Condition
-from time import sleep, time
+from multiprocessing import Process, Event, Condition
+from statistics import mean
+from time import perf_counter_ns, sleep
 from typing import Optional
 
 
-class Ticker(Thread):
-    """Simple timer class to fire tick events."""
+class Ticker(Process):
+    """Notifies a Condition object at a given interval."""
 
     def __init__(
         self,
+        tick: Condition,
+        interval: float,
+        stop: Optional[Event] = None,
         name: Optional[str] = None,
-        interval: Optional[float] = None,
-        precision: float = 100
-    ) -> None:
-        self.__interval: float = float(interval) if interval else None
-        self.__precision: float = precision
-        self.__sleep: float = interval / precision if interval else None
-        self.__run: Event = Event()
-        self.__tick: Condition = Condition()
+        precision: float = 0,
+    ):
+        """Create a Ticker.
 
-        super().__init__(
-            name=name if name else f"Ticker[{self.__interval}]",
-            daemon=True
-        )
+        Args:
+            tick (Condition): The condition to notify on each tick.
+            interval (Float): The number of seconds between each tick.
+            stop (Event): The event to set in order to stop the Process.
+            name (str): The name to assign the process.
+            precision (float): The min number of seconds between checking for ticks.
+        """
+        self.__tick = tick
+        self.__stop = stop if stop else Event()
+        self.__interval_ns = int(interval * 1e9)
+        self.__precision = min(precision, interval)
 
-    @property
-    def tick(self) -> Condition:
-        return self.__tick
+        super().__init__(name=name if name else f"Ticker[{self.__interval_ns}ns]")
 
-    @property
-    def interval(self) -> float:
-        return self.__interval
+        self.run = self.run_high_precision if self.__precision < 0.02 else self.run_low_precision
 
-    @interval.setter
-    def interval(self, interval) -> None:
-        try:
-            if interval <= 0:
-                raise ValueError("interval must be > 0")
-        except TypeError as e:
-            raise TypeError("interval must be a positive float", e)
+    def run_low_precision(self) -> None:
+        """Runs the Ticker until the stop event is set."""
+        next_tick = perf_counter_ns()
+        while not self.__stop.is_set():
+            next_tick = next_tick + self.__interval_ns
 
-        self.__interval = interval
-        self.__sleep = interval / self.__precision
+            while perf_counter_ns() < next_tick:
+                sleep(self.__precision)
 
-    def wait(self, timeout: Optional[float] = None) -> bool:
-        with self.__tick:
-            return self.__tick.wait(timeout=timeout)
-
-    def start(self) -> None:
-        if not self.__sleep:
-            raise RuntimeError("interval must be set for Ticker is started")
-
-        super().start()
-
-    def run(self) -> None:
-        self.__run.set()
-        while self.__run.is_set():
             with self.__tick:
                 self.__tick.notify_all()
 
-            next_tick = time() + self.__interval
+    def run_high_precision(self) -> None:
+        """Runs the Ticker until the stop event is set."""
+        next_tick = perf_counter_ns()
+        while not self.__stop.is_set():
+            next_tick = next_tick + self.__interval_ns
 
-            while time() < next_tick:
-                if not self.__run.is_set():
-                    break
+            while perf_counter_ns() < next_tick:
+                continue
 
-                sleep(self.__sleep)
+            with self.__tick:
+                self.__tick.notify_all()
 
-    def stop(self, timeout: Optional[float] = None) -> None:
-        if self.__run.is_set():
-            self.__run.clear()
-            self.join(timeout=timeout)
+
+
+tick, stop, interval, precision = Condition(), Event(), 1, 0.01
+
+ticker = Ticker(tick, interval, stop, precision)
+ticker.start()
+
+ticks = []
+for _ in range(10):
+    with tick:
+        tick.wait()
+    ticks.append(perf_counter_ns())
+
+print(ticks)
+print(mean([ticks[i+1] - ticks[i] for i in range(len(ticks)-1)]) / 1e9)
+
+stop.set()
+ticker.join()
