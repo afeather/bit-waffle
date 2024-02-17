@@ -1,18 +1,18 @@
 from functools import lru_cache
-from io import BytesIO, RawIOBase, BufferedIOBase, IOBase
-from typing import IO, BinaryIO
+from io import BytesIO, IOBase
 
 
 class CRC:
+    """Object to generate CRC values based on certain parameters."""
 
     def __init__(
-            self,
-            polynomial: int,
-            width: int,
-            initial: int,
-            final: int,
-            reflect_input: bool,
-            reflect_output: bool
+        self,
+        polynomial: int,
+        width: int,
+        initial: int,
+        final: int,
+        reflect_input: bool,
+        reflect_output: bool,
     ) -> None:
         """
         Creates a CRC object.
@@ -26,12 +26,12 @@ class CRC:
         if width < 8:
             raise ValueError("Polynomial must have at least 8 bits.")
 
-        self.__divisor = self.__reflect_bits(polynomial, width)
-        self.__width = width
-        self.__initial = self.__reflect_bits(initial, width)
-        self.__final = self.__reflect_bits(final, width)
-        self.__reflect_input = reflect_input
-        self.__reflect_output = reflect_output
+        self.__divisor: int = self.__reflect_bits(polynomial, width)
+        self.__width: int = width
+        self.__initial: int = self.__reflect_bits(initial, width)
+        self.__final: int = self.__reflect_bits(final, width)
+        self.__reflect_input: bool = reflect_input
+        self.__reflect_output: bool = reflect_output
 
     @staticmethod
     def __reflect_bits(bits: int, width: int) -> int:
@@ -54,7 +54,9 @@ class CRC:
         :param byte: The byte to add.
         :return: The byte to xor with the CRC.
         """
-        for _ in range(8):
+        assert 0x00 <= byte <= 0xFF, "Byte must be between 0x00 and 0xFF"
+
+        for _ in range(8):  # For each bit in the byte.
             byte = (byte >> 1) ^ self.__divisor if byte & 1 else byte >> 1
 
         return byte
@@ -68,20 +70,25 @@ class CRC:
         if not isinstance(data, IOBase):
             data = BytesIO(data)
 
-        crc = self.__initial
+        crc = self.__initial  # Set the initial value.
 
         while True:
             try:
                 [byte] = data.read(1)
             except ValueError:
-                break
+                break  # No more data. Stop.
 
+            # This is backwards because we reflect the data to improve
+            # the performance of the CRC algorithm. If we expect the
+            # input to be reflected then we need to not not reflect it.
             if not self.__reflect_input:
                 byte = self.__reflect_bits(byte, 8)
 
             crc = self.__crc_byte((crc ^ byte) & 0xFF) ^ (crc >> 8)
 
+        # Same as above, CRC is already reflected so if we do not want
+        # reflected output then reflect the bits again.
         if not self.__reflect_output:
             crc = self.__reflect_bits(crc, self.__width)
 
-        return crc ^ self.__final
+        return crc ^ self.__final  # Xor with the final value.

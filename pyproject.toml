@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "bit-waffle"
+version = "0.1.0"
+description = ""
+authors = ["Alex Feather <alexfeather77@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.1"
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

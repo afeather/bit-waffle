@@ -17,7 +17,7 @@ def is_prime(n: int) -> bool:
         return n in [2, 3]
 
     for d in probably_prime():
-        if d ** 2 > n:
+        if d**2 > n:
             return True
         if n % d == 0:
             return False
@@ -44,7 +44,7 @@ def simple_sieve(n: int) -> Iterable[int]:
         if i * i < n:
             if a[i]:
                 yield i
-                for j in range(i ** 2, len(a), i):
+                for j in range(i**2, len(a), i):
                     a[j] = False
         else:
             if a[i]:
@@ -74,16 +74,20 @@ def incremental_sieve() -> Iterable[int]:
 
 
 def nth_prime(n: int) -> int:
-    return next(prime for count, prime in enumerate(incremental_sieve(), 1) if count >= n)
+    return next(
+        prime for count, prime in enumerate(incremental_sieve(), 1) if count >= n
+    )
+
 
 if __name__ == "__main__":
     import time
 
     start = time.perf_counter()
     simple_sieve(1e8)
-    print(time.perf_counter()-start)
+    print(time.perf_counter() - start)
 
     start = time.perf_counter()
     for p in incremental_sieve():
-        if p > 1e8: break
-    print(time.perf_counter()-start)
+        if p > 1e8:
+            break
+    print(time.perf_counter() - start)
