@@ -10,9 +10,12 @@ python = "^3.12"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.1"
+pytest-coverage = ">=0.0"
+pytest-pretty-terminal = ">=0.0"
 
 [tool.pytest.ini_options]
 testpaths = "tests"
+addopts = "--pretty --cov-report term-missing:skip-covered"
 
 [build-system]
 requires = ["poetry-core"]

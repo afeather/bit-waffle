@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pytest import fixture
 
-from BitWaffle.CRC import from_algorithm, Algorithms, Algorithm
+from BitWaffle.CRC import Algorithms, Algorithm, compute
 
 
 @fixture(
@@ -29,12 +29,12 @@ def crc_test_case(request) -> tuple[Algorithm, bytes, int]:
 def test_crc(crc_test_case: tuple):
     """Tests generating a CRC from byte data."""
     algorithm, data, expected = crc_test_case
-    assert from_algorithm(algorithm).compute(data) == expected
+    assert compute(data, algorithm) == expected
 
 
 @fixture
 def tmp_file(tmp_path: Path) -> Path:
-    """"""
+    """Generates a filepath in the tmp_path dir."""
     return tmp_path / "data"
 
 
@@ -44,5 +44,14 @@ def test_crc_file(crc_test_case: tuple, tmp_file: Path):
 
     tmp_file.write_bytes(data)
 
-    with open(tmp_file, "br") as f:
-        assert from_algorithm(algorithm).compute(f) == expected
+    with open(tmp_file, "br") as binary_io:
+        assert compute(binary_io, algorithm) == expected
+
+
+def test_large_file(tmp_file: Path):
+    """Make sure we can generate a CRC for a large file."""
+    import os
+
+    os.system(f"fallocate -l 5MB {tmp_file}")
+
+    assert compute(tmp_file.read_bytes()) == 802113381

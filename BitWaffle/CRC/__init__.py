@@ -1,11 +1,2 @@
-from BitWaffle.CRC.Algorithms import Algorithm
-from BitWaffle.CRC.CRC import CRC
-
-
-def from_algorithm(algorithm: Algorithm) -> CRC:
-    """
-    Generates a CRC object for the given algorithm.
-    :param algorithm: The CRC Algorithm.
-    :return: The CRC Object.
-    """
-    return CRC(*algorithm)
+from BitWaffle.CRC.Algorithms import Algorithm, Algorithms  # noqa F401
+from BitWaffle.CRC.CRC import CRC, compute  # noqa F401
